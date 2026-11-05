@@ -44,8 +44,8 @@ for i, c in enumerate(CONTENDERS):
         x = t_i + (i - 1) * w
         if m:
             ax1.bar([x], [m], w, color=COLORS[c], zorder=2)
-            top = max([r["wall_s"] for r in rs if r["success"]] + [m])
-            ax1.text(x, top * 1.34, f"{m:.1f}s", ha="center", va="bottom",
+            top = max([r["wall_s"] for r in rs] + [m])
+            ax1.text(x, top * 1.45, f"{m:.1f}s", ha="center", va="bottom",
                      fontsize=9.5, fontweight="bold", color=COLORS[c], zorder=4)
         elif rs:
             ax1.text(x, 0.55, f"0/{len(rs)}", ha="center", va="bottom",

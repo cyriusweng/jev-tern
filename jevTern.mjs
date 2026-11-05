@@ -244,7 +244,7 @@ function actionSpace(actions) {
   const elements=[], indices={}, targets={}, controls={}; const fields=[];
   const operations={click:"CLICK",fill:"TYPE_TEXT",select:"SELECT"};
   for (const action of actions) {
-    if (action.kind==="scroll" || action.kind==="wait") { controls[action.id]=action; continue; }
+    if (action.kind==="scroll" || action.kind==="wait" || action.kind==="back") { controls[action.id]=action; continue; }
     if (action.kind==="scroll_to") { (targets.SCROLL_TO ||= {})[action.id]=action; continue; }
     const node=action.node;
     if (!(node in indices)) {
@@ -280,7 +280,7 @@ function buildBody(goal, snap, history, shot=null) {
   const questions={
     operation:{type:"choice",criteria:ops,instructions:{goal,rules:NEXT_ACTION}},
     goal:{type:"noul",instructions:{goal,rules:
-      "Probability that every requirement of the goal is now satisfied, judging from the page text, fields (visible editable fields with their current values), URL, visible_headings (the section headings currently on screen), overlays (consent banners/dialogs currently covering the page; an empty list means none), the recent action history AND recent_pages (the pages visited just before this one; connect the chain of evidence across pages); when `screenshot` is present it shows the current viewport, so judge visual requirements from it. History is evidence: when an earlier page identified the exact target (for example today's featured article) and the most recent actions opened exactly that target, the requirement counts as satisfied even if the current page does not restate it. A merely promising link, a partial fill, or an unrelated page does not count."}},
+      "Probability that every requirement of the goal is now satisfied, judging from the page text, fields (visible editable fields with their current values), URL, visible_headings (the section headings currently on screen), overlays (consent banners/dialogs currently covering the page; an empty list means none), the recent action history AND recent_pages (the pages visited just before this one; connect the chain of evidence across pages); when `screenshot` is present it shows the current viewport, so judge visual requirements from it. `code_verified`, when present, lists facts the engine verified mechanically (measured geometry, resolved identities); treat every entry as ground truth: a requirement matching a verified fact is satisfied. History is evidence, and arrival completes the task: when an earlier page presented or named the exact target (for example a portal naming today's featured article, or a search result naming the item to open) and the most recent click opened exactly that named target, every requirement is satisfied — score 0.9 or higher even when the current page's own text never restates the task's wording. A merely promising link, a partial fill, or an unrelated page does not count."}},
     stuck:{type:"noul",instructions:{goal,rules:
       "Probability that recent actions are repeating without progress (same or similar actions, no page change, goal not advancing)."}},
   };
@@ -309,6 +309,7 @@ function buildBody(goal, snap, history, shot=null) {
       fields,
       recent_actions:history.slice(-10),
       recent_pages:(snap.trail||[]),
+      ...(snap.code_verified ? {code_verified:snap.code_verified} : {}),
       ...(shot ? {screenshot:shot.ref} : {}),
     },
     ...(shot ? {assets:{[shot.ref]:{type:"image",format:"png",data_base64:shot.b64}}} : {}),
@@ -368,6 +369,10 @@ async function execute(tab, action) {
   if (action.kind==="scroll") {
     await tab.evaluate(`window.scrollBy(0, ${action.delta}), "scrolled"`);
     return {did:"scrolled"};
+  }
+  if (action.kind==="back") {
+    await tab.evaluate(`history.back(), "went-back"`);
+    return {did:"went-back"};
   }
   if (action.kind==="wait") {
     await new Promise(r=>setTimeout(r,900));
@@ -486,19 +491,25 @@ export async function run(opts) {
   if (allowedDomains) { try { await tab.allowedDomains(allowedDomains); } catch {} }
   // First-paint readiness: stay silent while the initial navigation commits (evaluating
   // mid-navigation cancels it on this WKWebView bridge), then poll for a complete document.
-  await new Promise(r=>setTimeout(r,1200));
-  for (let i=0;i<20;i++) {
+  await new Promise(r=>setTimeout(r,500));
+  for (let i=0;i<25;i++) {
     let st; try { st=await tab.evaluate(`document.readyState`); } catch { st="loading"; }
     if (st==="complete") break;
-    await new Promise(r=>setTimeout(r,300));
+    await new Promise(r=>setTimeout(r,200));
   }
-  await new Promise(r=>setTimeout(r,400));
+  await new Promise(r=>setTimeout(r,200));
   // Fresh viewport per task: this WKWebView restores the tab's previous scroll offset,
   // which would start the judge mid-article instead of at the lead.
   try { await tab.evaluate(`window.scrollTo(0,0)`); } catch {}
 
   const t0=Date.now(); const history=[]; const steps=[]; const usage={input:0,output:0}; const trail=[]; let lastShortcut=null; let lastShortcutLabel=null; let shortcutPrevStep=false;
   let lastRepeat={id:null,count:0}; let noChangeStreak=0;
+  // A freshly navigated page gets one judgment step before any deterministic shortcut:
+  // shortcuts act on known pages, and a just-arrived page has not been read yet.
+  let prevStepChangedPage=false;
+  let lowConfStreak=0;
+  // Facts the engine verified mechanically; injected into every judgment as ground truth.
+  const codeVerified=[];
   const result={task,startUrl,status:"budget",goal:null,steps,elapsed_s:0};
 
   for (let step=1;step<=maxSteps;step++) {
@@ -523,10 +534,65 @@ export async function run(opts) {
       if (a.id==="scroll_down" && snap.scroll && (snap.scroll.y+(snap.h||0))>=snap.scroll.height-4) return false;
       return true;
     });
+    // Recovery primitive: when a previous distinct page exists, offer GO_BACK so a wrong
+    // navigation costs one step instead of the whole remaining budget.
+    const prevPage=trail.length>1 && trail[trail.length-2].url!==snap.url ? trail[trail.length-2] : null;
+    if (prevPage) snap.actions.push({id:"back",kind:"back",
+      label:`Undo the last navigation; return to the previous page ("${String(prevPage.title).slice(0,40)}").`});
+    // Quoted-heading jump: a task naming a section in quotes gets a direct jump when the
+    // DOM holds exactly one such heading — the target exists before it scrolls into view.
+    const quoted=(task.match(/['"「『]([^'"」』]{2,60})['"」』]/)||[])[1];
+    if (quoted && !shortcutPrevStep && !prevStepChangedPage) {
+      let hit=null;
+      try {
+        hit=await tab.evaluate(`(() => {
+          const want=${JSON.stringify(quoted.toLowerCase())};
+          const set=new Set();
+          for (const e of document.querySelectorAll('h1,h2,h3,h4,h5,h6'))
+            if ((e.textContent||'').trim().toLowerCase()===want) set.add(e);
+          for (const e of document.querySelectorAll('[id]'))
+            if ((e.id||'').toLowerCase()===want) set.add(e);
+          const m=[...set];
+          if (m.length!==1) return null;
+          const r=m[0].getBoundingClientRect();
+          return {y:Math.round(r.top+window.scrollY-80), label:(m[0].textContent||'').trim().slice(0,50)};
+        })()`);
+      } catch {}
+      if (hit) {
+        const entry={step,operation:"SCROLL_TO",conf:1,goal:null,stuck:null,act:"quoted-heading-jump",
+          targetLabel:`"${hit.label}"`};
+        try {
+          await tab.evaluate(`window.scrollTo({top:${hit.y},behavior:"instant"}), "jumped"`);
+          shortcutPrevStep=true; lastShortcutLabel=null;
+          const settled=await settle(tab,sigScroll,"local",true);
+          entry.pageChanged=settled.changed;
+          // Mechanical ground truth: if the quoted heading is now inside the viewport,
+          // record it — the next judgment receives it as verified fact.
+          const vis=await tab.evaluate(`(() => {
+            const want=${JSON.stringify(quoted.toLowerCase())};
+            const set=new Set();
+            for (const e of document.querySelectorAll('h1,h2,h3,h4,h5,h6'))
+              if ((e.textContent||'').trim().toLowerCase()===want) set.add(e);
+            for (const e of document.querySelectorAll('[id]'))
+              if ((e.id||'').toLowerCase()===want) set.add(e);
+            const m=[...set];
+            if (m.length!==1) return null;
+            const r=m[0].getBoundingClientRect();
+            return (r.top>=0 && r.bottom<=window.innerHeight)
+              ? "top="+Math.round(r.top)+"px bottom="+Math.round(r.bottom)+"px of "+window.innerHeight+"px" : null;
+          })()`);
+          if (vis) codeVerified.push("The quoted heading \""+quoted+"\" is in the viewport right now ("+vis+").");
+          steps.push(entry);
+          history.push({action:`scroll_to "quoted ${hit.label}"`,page_changed:settled.changed});
+        } catch (e) { entry.error=String(e.message||e).slice(0,120); steps.push(entry); }
+        continue;
+      }
+    }
     // Visual evidence attaches only when pixels can add signal: canvas-thin pages, overlays
     // present, or two actions in a row changed nothing. Deterministic policy, model judges.
     const thinPage=(snap.actions||[]).length<8 || (snap.text||"").length<400;
-    const wantShot=thinPage || (snap.overlays||[]).length>0 || noChangeStreak>=2;
+    const wantShot=thinPage || (snap.overlays||[]).length>0 || noChangeStreak>=2 || lowConfStreak>=1;
+    snap.code_verified=codeVerified.length?codeVerified:undefined;
     const shot=wantShot ? await captureShot(tab) : null;
     const {targets,controls,body}=buildBody(task,snap,history,shot);
     const tokens=[...new Set((task.toLowerCase().match(/[a-z0-9]{2,}|[\u4e00-\u9fff]{2,}/g)||[]))];
@@ -551,7 +617,7 @@ export async function run(opts) {
     const best=hits.filter(h=>h.score===top);
     // A named section (score>=1, unique) is a direct jump; other operations need score>=2.
     const sectionOnly=best.length===1 && best[0].operation==="SCROLL_TO";
-    if (!shortcutPrevStep && (top>=2 || (top>=1 && sectionOnly)) && best.length===1 && best[0].action.id!==lastShortcut && best[0].action.label!==lastShortcutLabel) {
+    if (!shortcutPrevStep && !prevStepChangedPage && (top>=2 || (top>=1 && sectionOnly)) && best.length===1 && best[0].action.id!==lastShortcut && best[0].action.label!==lastShortcutLabel) {
       const {operation,action}=best[0];
       lastShortcutLabel=action.label;
       const entry={step,operation,conf:1,goal:null,stuck:null,act:"exact-match",targetLabel:action.label.slice(0,80)};
@@ -560,6 +626,7 @@ export async function run(opts) {
         const sc=action.kind==="scroll"||action.kind==="scroll_to";
         const settled=await settle(tab,sc?sigScroll:sig,action.kind==="click"?"click":"local",sc);
         entry.pageChanged=settled.changed; steps.push(entry);
+        prevStepChangedPage=settled.changed;
         history.push({action:`${operation.toLowerCase()} ${action.id} "${action.label.slice(0,50)}" (exact task match)`,page_changed:settled.changed});
       } catch (e) { entry.error=String(e.message||e).slice(0,120); steps.push(entry); }
       continue;
@@ -574,6 +641,7 @@ export async function run(opts) {
     const stuckN=j.answers.stuck?.noul ?? null;
     let operation=opAnswer.choice;
     const entry={step,decide_ms:decided-ts,operation,conf:opAnswer.confidence,goal:goalN,stuck:stuckN};
+    lowConfStreak=opAnswer.confidence<0.55 ? lowConfStreak+1 : 0;
 
     // Goal Noul at a high bar is an independent finish signal: the operation choice can
     // hedge between DONE and a harmless click, but a 0.9+ goal reading is direct evidence.
@@ -581,9 +649,15 @@ export async function run(opts) {
       entry.act = operation==="DONE" ? "done" : "done-goal-noul";
       steps.push(entry); result.status="done"; result.goal=goalN; break;
     }
-    // DONE gate: the operation says done AND the goal Noul agrees.
+    // Arrival finish: a fresh navigation onto a page that reads 0.8+ with no stuck signal
+    // is a completed target-arrival even when the operation hedges (typically with BACK).
+    if (goalN!==null && goalN>=0.8 && stuckN!==null && stuckN<0.3 && prevStepChangedPage) {
+      entry.act="done-arrival"; steps.push(entry); result.status="done"; result.goal=goalN; break;
+    }
+    // DONE gate: the operation says done, the goal Noul agrees, and the judge itself is
+    // at least 0.6 confident — a finish needs three kinds of agreement.
     if (operation==="DONE") {
-      if (goalN===null || goalN>=0.8) { entry.act="done"; steps.push(entry); result.status="done"; result.goal=goalN; break; }
+      if ((goalN===null || goalN>=0.8) && opAnswer.confidence>=0.6) { entry.act="done"; steps.push(entry); result.status="done"; result.goal=goalN; break; }
       const fallback=Object.entries(opAnswer.probabilities)
         .filter(([k])=>k!=="DONE"&&k!=="BLOCKED"&&(targets[k.toLowerCase()]||controls[k.toLowerCase()]))
         .sort((a,b)=>b[1]-a[1])[0];
@@ -608,7 +682,7 @@ export async function run(opts) {
     }
 
     let action;
-    if (operation==="WAIT"||operation==="SCROLL_DOWN"||operation==="SCROLL_UP") {
+    if (operation==="WAIT"||operation==="BACK"||operation==="SCROLL_DOWN"||operation==="SCROLL_UP") {
       const key=operation.toLowerCase();
       action=controls[key];
       if (!action) { entry.act="missing-control"; steps.push(entry); result.status="error"; break; }
@@ -647,10 +721,11 @@ export async function run(opts) {
       continue;
     }
     const isScroll=action.kind==="scroll" || action.kind==="scroll_to";
-    const settleRes=await settle(tab,isScroll?sigScroll:sig,action.kind==="click"?"click":"local",isScroll);
+    const settleRes=await settle(tab,isScroll?sigScroll:sig,(action.kind==="click"||action.kind==="back")?"click":"local",isScroll);
     entry.act_ms=Date.now()-decided-settleRes.waited_ms;
     entry.pageChanged=settleRes.changed;
     entry.settled_ms=settleRes.waited_ms;
+    prevStepChangedPage=settleRes.changed;
     noChangeStreak=settleRes.changed?0:noChangeStreak+1;
     entry.dbgSnapUrl=snap.url; entry.dbgTitle=await tab.title();
     try { entry.dbgHref=await tab.evaluate(`location.href`); } catch { entry.dbgHref="ERR"; }

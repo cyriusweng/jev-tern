@@ -17,13 +17,13 @@ Plain-language tasks, finished in a browser tab you can watch the whole time.
 ---
 
 On the same three live tasks, same machine and API keys, three runs per task: jev-tern
-finished **10× faster** than [browser-use](https://github.com/browser-use/browser-use) on
-a one-hop fetch (2.9 s vs 28.9 s), **12×** on a portal search (10.0 s vs 115.5 s) and
-**33×** on a section jump (4.0 s vs 131.5 s), scoring **8/9** with the one miss reported
-by the engine itself as `budget` and confirmed by URL; browser-use scored 9/9. A
-hand-written Playwright script set the speed floor at 1.4–1.6 s per task — it knows each
-page's DOM in advance, while jev-tern reads every page for the first time and takes
-plain language. Full method, raw results, and chart: **[BENCHMARK.md](BENCHMARK.md)**.
+finished **18× faster** than [browser-use](https://github.com/browser-use/browser-use) on
+a one-hop fetch (1.6 s vs 28.9 s), **34×** on a portal search (3.4 s vs 115.5 s) and
+**73×** on a section jump (1.8 s vs 131.5 s) — **9/9 task success** for both agents, with
+jev-tern's portal runs verified externally by URL. A hand-written Playwright script set
+the speed floor at 0.6–1.6 s per task — it knows each page's DOM in advance, while
+jev-tern reads every page for the first time and takes plain language. Full method, raw
+results, and chart: **[BENCHMARK.md](BENCHMARK.md)**.
 
 ![Benchmark chart](docs/bench-chart.png)
 
@@ -76,7 +76,9 @@ runtime from `omp token` (override with `OMP_BIN` if your binary lives elsewhere
 
 ## What it handles
 
-- Click, type, select, scroll, and straight jumps to section headings.
+- Click, type, select, scroll, and straight jumps to section headings; a task naming a
+  section in quotes jumps directly when the DOM holds exactly one such heading, then
+  hands the measured geometry to the judge as code-verified ground truth.
 - Popups: shadow DOM is pierced (consent banners become ordinary buttons), overlays are
   detected mechanically, dismissing them is a normal click.
 - Canvas pages: a page with almost nothing in the DOM gets a viewport screenshot, a Box
@@ -86,8 +88,13 @@ runtime from `omp token` (override with `OMP_BIN` if your binary lives elsewhere
   (headings, paragraphs, lists, links, tables; 20k cap; navigation and citation noise
   removed).
 - Shortcuts: a task naming a unique select option or link executes in code without a model
-  round, and never twice in a row. Section jumps take this path only for navigation-style
-  tasks.
+  round, and never twice in a row; shortcuts wait for one judgment step on a freshly
+  navigated page.
+- Recovery: a GO_BACK control appears whenever a previous distinct page exists, so a
+  wrong navigation costs one step.
+- Confidence floors: a DONE needs the operation choice, the goal Noul at 0.8+, and the
+  judge's own confidence at 0.6+; an action picked below 0.55 attaches a viewport
+  screenshot to the next judgment.
 - Every task starts from a fresh top-of-page viewport, and scroll directions that cannot
   move are withheld from the judge.
 - Honest outcomes: `stuck` and `blocked` come back as they are, with the evidence that
