@@ -24,7 +24,7 @@ reason it failed.
 One run, no cuts — search typed, suggestion picked, article opened (recorded by
 `demo.mjs`):
 
-[![demo video](docs/demo.mp4)](docs/demo.mp4)
+![demo video](docs/demo.mp4)
 
 Three live Wikipedia tasks, three runs each, same machine and same API keys for both
 agents: jev-tern finished in 1.6, 3.4 and 1.8 seconds where
