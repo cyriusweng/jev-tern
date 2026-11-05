@@ -1,0 +1,16 @@
+{
+  "name": "jev-tern",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "A browser agent you can watch: one sentence in, one judged step at a time in a live tab.",
+  "license": "MIT",
+  "bin": {
+    "jev-tern": "./run.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "playwright": "^1.64.1"
+  }
+}

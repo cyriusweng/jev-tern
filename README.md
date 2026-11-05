@@ -21,6 +21,11 @@ sections, click canvas UI — in a browser tab you can watch the whole time. Whe
 finishes, you get the status and the evidence behind it. When it fails, you get the
 reason it failed.
 
+One run, no cuts — search typed, suggestion picked, article opened (recorded by
+`demo.mjs`):
+
+[![demo video](docs/demo.mp4)](docs/demo.mp4)
+
 Three live Wikipedia tasks, three runs each, same machine and same API keys for both
 agents: jev-tern finished in 1.6, 3.4 and 1.8 seconds where
 [browser-use](https://github.com/browser-use/browser-use) took 28.9, 115.5 and 131.5 —
@@ -44,17 +49,27 @@ any stack that provides them.
 
 ## Quickstart
 
+Needs Node ≥ 18 and two keys in the environment: `TYPESAFE_KEY` for the
+[Jev](https://typesafe.ai) judge, and `TYPING_BASE_URL` + `TYPING_MODEL` + `TYPING_KEY`
+for any OpenAI-compatible chat endpoint that fills form fields.
+
+```sh
+git clone https://github.com/cyriusweng/jev-tern && cd jev-tern
+npm install && npx playwright install chromium
+node run.mjs "In Wikipedia search, find the article about the Rosetta Stone and open it" \
+  https://en.wikipedia.org/wiki/Main_Page
+```
+
+A Chromium window opens, the task runs step by step in it, and the result prints to the
+terminal. `--headless` runs it invisibly, `--json` prints machine-readable output,
+`--markdown` returns the final page as markdown, `--cdp <url>` attaches to a browser you
+already have running. As a library:
+
 ```js
-const jt = await import("/path/to/jevTern.mjs");
-const r = await jt.run({
-  task: "Open today's featured article",
-  startUrl: "https://en.wikipedia.org/wiki/Main_Page",
-  maxSteps: 12,        // default 14
-  maxSeconds: 90,      // default 100
-  tabName: "jev-tern", // the reused PiP tab
-  allowedDomains: ["en.wikipedia.org"], // optional
-  markdown: true,      // optional: final page main content back as markdown
-});
+import { attachCdpBridge } from "./cdp-bridge.mjs";
+await attachCdpBridge();            // sets globalThis.browser
+const jt = await import("./jevTern.mjs");
+const r = await jt.run({ task: "…", startUrl: "https://…" });
 ```
 
 The result carries `status` (`done | blocked | stuck | budget | error`), `goal` (0–1
@@ -75,14 +90,10 @@ The browser bridge is six calls. Implement these and the rest of the file runs a
 | `tab.allowedDomains([…])` | optional domain guard |
 | `tab.run(async ({page}) => …)` | full page access, used only for screenshots |
 
-You also need Node ≥ 18 and two keys, set through the environment:
-
-- `TYPESAFE_KEY` — the Jev judge
-- `TYPING_BASE_URL`, `TYPING_MODEL`, `TYPING_KEY` — any OpenAI-compatible chat endpoint
-  that fills form fields
-
-A local credential store works as a fallback when the environment variables are unset
-(point `OMP_BIN` at it).
+Keys are the ones from Quickstart; a local credential store works as a fallback when the
+environment variables are unset (point `OMP_BIN` at it). The engine was born on the
+OMP + Tern desktop setup, where it drives the picture-in-picture WebKit tab through the
+same six calls.
 
 ## What it handles
 
