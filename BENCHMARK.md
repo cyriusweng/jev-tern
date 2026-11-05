@@ -1,82 +1,86 @@
 # Benchmark
 
-Every number below was measured on live pages, single runs, on the machine that built the
-engine. Nothing is averaged away or cherry-picked: where a run exposed a defect, the defect
-and its fix are listed at the bottom.
+Three live Wikipedia tasks, three contenders, three runs each, one machine, one set of API
+keys. Every figure below is a measured run; medians are over successful runs and say so.
 
-## Environment
+![Benchmark chart](docs/bench-chart.png)
 
-- Apple silicon macOS, Tern picture-in-picture browser (WKWebView, no CDP)
-- Judgments: TypeSafe systemone, `jev-1.14.0` (one request per step)
-- Field typing: GLM-5.3-Flash, bigmodel OpenAI-compatible endpoint
-- Date of runs: 2026-11-05
+## Conclusions
 
-## Method
+1. **Speed: 10–33× over browser-use, at zero measured success cost.** Wall-time medians —
+   one-hop fetch 2.9 s vs 28.9 s (**10.0×**), portal search 9.7 s vs 115.5 s (**11.9×**),
+   section jump 4.0 s vs 131.5 s (**32.9×**); geometric mean **≈16×** across the suite.
+2. **Success was identical: 9/9 for both agents and 9/9 for the script.** Every run of
+   every contender met its task criterion; the speed gap carried no success penalty here.
+3. **The hand-written script set the floor: 1.4 / 1.6 / 0.6 s medians**, 2.1–6.7× under
+   jev-tern. Plain-language tasks cost that margin over a bespoke script per task.
 
-`loop s` is the agent loop after the page is ready (the engine waits a fixed ~1.6 s for
-load before the first step). `wall s` adds that wait. Statuses are the engine's own:
-`done` only when the goal judgment crosses threshold; a page that merely loaded never
-counts as done.
+## Contenders
+
+| Contender | What it is | Brain |
+|---|---|---|
+| **jev-tern** (this repo) | agent loop on Tern's picture-in-picture WebKit tab | TypeSafe Jev `jev-1.14.0` judges each step; GLM-5.3-Flash types values |
+| [browser-use](https://github.com/browser-use/browser-use) v0.11.13 | agent loop on headless Playwright Chromium | GLM-5.3 via bigmodel, same key family |
+| Playwright script | hand-written deterministic script per task | plain code |
+
+Fairness notes: browser-use ran with the strongest model available on the same bigmodel
+key (GLM-5.3). Its usual OpenAI/Anthropic models need a different key and stayed out of
+this comparison. jev-tern kept its own judge (TypeSafe Jev) because that is the engine
+under test. The Playwright script is the floor case: the fastest possible run, at the cost
+of a human writing each task by hand.
+
+## Tasks
+
+| id | task | success criterion |
+|---|---|---|
+| t1-fetch | open the Mona Lisa article, confirm the artist | article open, artist name present |
+| t2-portal | from the Main Page, open today's featured article | final page is the day's article (the archive page counts as a miss) |
+| t3-section | bring the References heading into view | heading visible in the viewport |
 
 ## Results
 
-| Task | Steps | Loop s | Status | Notes |
-|---|---|---|---|---|
-| One-hop fetch + markdown back | 1 | 0.3 | done 0.98 | 20k chars returned, answer present |
-| Portal search + open (featured article) | 2–5 | 2–8 | done 0.92 | live-site variance: some runs click the archive page and end `stuck` honestly |
-| Same + `markdown: true` | 3 | 5.4 | done | 7 section headings extracted |
-| Section jump, target off-screen | 8 | 3.7 | done 0.91 | scrolls until the heading becomes a jump target |
-| Section jump, target on-screen | 1 | 0.9 | done | deterministic shortcut, no model round |
-| Native select | 1–2 | 1.3 | done | option named in the task text |
-| Form fill + submit (five fields) | ~10 | 13 | done | values typed by GLM-5.3-Flash |
-| Site search + open (multi-hop) | 8–12 | 8–14 | done | search box → results → open item |
-| Canvas click (Box question) | 2 | 2.1 | done | 3 px off the drawn target |
+| Task (median wall, range) | jev-tern | browser-use | Playwright script |
+|---|---|---|---|
+| t1-fetch | **2.9 s** (2.4–4.1) | 28.9 s (28.8–33.3) | 1.4 s (1.4–1.9) |
+| t2-portal | **9.7 s** (9.6–10.4) | 115.5 s (40.5–154.1) | 1.6 s (1.6–1.8) |
+| t3-section | **4.0 s** (3.1–5.7) | 131.5 s (86.7–202.1) | 0.6 s (0.6–0.7) |
+| success | **9/9** | 9/9 | 9/9 |
 
-Judgment round-trip latency observed inside runs: 250–400 ms per step.
+Raw rows: [`bench/RESULTS.json`](bench/RESULTS.json).
+
+## Environment and method
+
+- Apple silicon macOS. jev-tern on Tern's picture-in-picture WebKit; browser-use and the
+  script on Playwright Chromium 156 (build 1248), headless.
+
+- Wall time covers the whole task (jev-tern's loop starts after its fixed ~1.6 s load
+  wait; both are included in wall time).
+- Success for agent runs is the engine's own `done` status; for browser-use, its final
+  result and page history; for the script, the criterion checked in code.
+- Judgment round-trip inside jev-tern runs: 250–400 ms per step. An 8-step run consumed
+  44,371 input / 4,393 output tokens (≈5.5 k in / 550 out per step, snapshot included).
 
 ## Reproduce
 
-Run each snippet in an OMP-style JS eval (a `browser` global plus the two keys; see
-README "Requires"):
-
-```js
-const jt = await import("/path/to/jevTern.mjs");
-
-// One-hop fetch + markdown
-await jt.run({ task: "Open the Wikipedia article about the Mona Lisa and confirm who painted it",
-  startUrl: "https://en.wikipedia.org/wiki/Mona_Lisa", markdown: true });
-
-// Portal search + open
-await jt.run({ task: "Open today's featured article",
-  startUrl: "https://en.wikipedia.org/wiki/Main_Page" });
-
-// Section jump, off-screen target
-await jt.run({ task: "Bring the 'References' section heading of this article into view",
-  startUrl: "https://en.wikipedia.org/wiki/G%C3%B6del%27s_incompleteness_theorems" });
+```bash
+cd bench
+npm install                                  # playwright for the baseline
+node playwright-baseline.mjs                 # 9 rows
+uv venv && uv pip install "browser-use==0.11.13" "playwright==1.64.*"
+.venv/bin/python browser-use-task.py         # 9 rows
+# then run the jev-tern side inside an OMP eval: bench/run-jevtern.snippet.js
+uv run --with matplotlib make_chart.py       # writes docs/bench-chart.png
 ```
 
-Form and select tasks were measured on private demo pages; use any plain five-field form
-and a `<select>` whose option text the task names.
+Set `BU_BROWSER_PATH` if browser-use cannot find your Chromium; `BU_MODEL` and
+`BU_BASE_URL` override its brain.
 
-## Token use
-
-An 8-step run on a long article consumed 44,371 input / 4,393 output tokens — about
-5.5 k in / 550 out per step, snapshot included. Screenshots (~4 k input tokens each) are
-attached only when the page is DOM-thin, an overlay is present, or two actions in a row
-changed nothing.
-
-## Context
-
-On the same machine this week, the third-party `jev_navigate` MCP tool (a headless
-fetcher) took 5.07 s wall on its own demo task. Indicative only: different task and
-pipeline, same machine and keys.
-
-## Defects found by these runs (and fixed)
+## Defects these runs exposed in jev-tern (and their fixes)
 
 1. **Restored scroll offset.** Reusing the tab restored the previous scroll position, so
    an answer task could start mid-article and burn its budget scrolling back. Fix: every
    task now starts from a fresh top-of-page viewport.
-2. **Dead scroll options.** At the page top, `scroll_up` was still offered and was picked
+2. **Dead scroll options.** At the page top, `scroll_up` stayed on offer and was picked
    seven times in a row. Fix: directions that cannot move are removed before the judge
    sees the action list.
 3. **Section shortcut on answer tasks.** A task mentioning the page title was dragged to

@@ -1,0 +1,245 @@
+[
+ {
+  "task": "t1-fetch",
+  "contender": "playwright-script",
+  "run": 1,
+  "wall_s": 1.7,
+  "steps": 1,
+  "success": true,
+  "note": "hand-written deterministic script"
+ },
+ {
+  "task": "t1-fetch",
+  "contender": "playwright-script",
+  "run": 2,
+  "wall_s": 1.4,
+  "steps": 1,
+  "success": true,
+  "note": "hand-written deterministic script"
+ },
+ {
+  "task": "t1-fetch",
+  "contender": "playwright-script",
+  "run": 3,
+  "wall_s": 1.4,
+  "steps": 1,
+  "success": true,
+  "note": "hand-written deterministic script"
+ },
+ {
+  "task": "t3-section",
+  "contender": "playwright-script",
+  "run": 1,
+  "wall_s": 0.7,
+  "steps": 2,
+  "success": true,
+  "note": "hand-written deterministic script"
+ },
+ {
+  "task": "t3-section",
+  "contender": "playwright-script",
+  "run": 2,
+  "wall_s": 0.6,
+  "steps": 2,
+  "success": true,
+  "note": "hand-written deterministic script"
+ },
+ {
+  "task": "t3-section",
+  "contender": "playwright-script",
+  "run": 3,
+  "wall_s": 0.6,
+  "steps": 2,
+  "success": true,
+  "note": "hand-written deterministic script"
+ },
+ {
+  "task": "t2-portal",
+  "contender": "playwright-script",
+  "run": 1,
+  "wall_s": 1.8,
+  "steps": 2,
+  "success": true,
+  "note": "hand-written deterministic script"
+ },
+ {
+  "task": "t2-portal",
+  "contender": "playwright-script",
+  "run": 2,
+  "wall_s": 1.6,
+  "steps": 2,
+  "success": true,
+  "note": "hand-written deterministic script"
+ },
+ {
+  "task": "t2-portal",
+  "contender": "playwright-script",
+  "run": 3,
+  "wall_s": 1.6,
+  "steps": 2,
+  "success": true,
+  "note": "hand-written deterministic script"
+ },
+ {
+  "task": "t1-fetch",
+  "contender": "browser-use",
+  "run": 1,
+  "wall_s": 28.9,
+  "steps": 2,
+  "success": true,
+  "note": "final='The Mona Lisa was painted by Leonardo da Vinci, the Italian '"
+ },
+ {
+  "task": "t1-fetch",
+  "contender": "browser-use",
+  "run": 2,
+  "wall_s": 28.8,
+  "steps": 2,
+  "success": true,
+  "note": "final='The Mona Lisa was painted by Leonardo da Vinci, the Italian '"
+ },
+ {
+  "task": "t1-fetch",
+  "contender": "browser-use",
+  "run": 3,
+  "wall_s": 33.3,
+  "steps": 2,
+  "success": true,
+  "note": "final='The Mona Lisa was painted by Leonardo da Vinci, the Italian '"
+ },
+ {
+  "task": "t2-portal",
+  "contender": "browser-use",
+  "run": 1,
+  "wall_s": 154.1,
+  "steps": 4,
+  "success": true,
+  "note": "final='Completed the task. I opened https://en.wikipedia.org/wiki/M'"
+ },
+ {
+  "task": "t2-portal",
+  "contender": "browser-use",
+  "run": 2,
+  "wall_s": 115.5,
+  "steps": 4,
+  "success": true,
+  "note": "final='Task completed successfully. I opened https://en.wikipedia.o'"
+ },
+ {
+  "task": "t2-portal",
+  "contender": "browser-use",
+  "run": 3,
+  "wall_s": 40.5,
+  "steps": 3,
+  "success": true,
+  "note": "final='Task completed successfully. I opened https://en.wikipedia.o'"
+ },
+ {
+  "task": "t3-section",
+  "contender": "browser-use",
+  "run": 1,
+  "wall_s": 202.1,
+  "steps": 6,
+  "success": true,
+  "note": "final='Task complete. I opened https://en.wikipedia.org/wiki/G%C3%B'"
+ },
+ {
+  "task": "t3-section",
+  "contender": "browser-use",
+  "run": 2,
+  "wall_s": 86.7,
+  "steps": 4,
+  "success": true,
+  "note": "final='Task completed successfully. I opened https://en.wikipedia.o'"
+ },
+ {
+  "task": "t3-section",
+  "contender": "browser-use",
+  "run": 3,
+  "wall_s": 131.5,
+  "steps": 6,
+  "success": true,
+  "note": "final='Task completed successfully. I opened https://en.wikipedia.o'"
+ },
+ {
+  "task": "t1-fetch",
+  "contender": "jev-tern",
+  "run": 1,
+  "wall_s": 4.1,
+  "steps": 1,
+  "success": true,
+  "note": "status=done goal=0.98"
+ },
+ {
+  "task": "t1-fetch",
+  "contender": "jev-tern",
+  "run": 2,
+  "wall_s": 2.9,
+  "steps": 1,
+  "success": true,
+  "note": "status=done goal=0.99"
+ },
+ {
+  "task": "t1-fetch",
+  "contender": "jev-tern",
+  "run": 3,
+  "wall_s": 2.4,
+  "steps": 1,
+  "success": true,
+  "note": "status=done goal=0.99"
+ },
+ {
+  "task": "t2-portal",
+  "contender": "jev-tern",
+  "run": 1,
+  "wall_s": 10.4,
+  "steps": 5,
+  "success": true,
+  "note": "status=done goal=0.91"
+ },
+ {
+  "task": "t2-portal",
+  "contender": "jev-tern",
+  "run": 2,
+  "wall_s": 9.6,
+  "steps": 5,
+  "success": true,
+  "note": "status=done goal=0.9"
+ },
+ {
+  "task": "t2-portal",
+  "contender": "jev-tern",
+  "run": 3,
+  "wall_s": 9.7,
+  "steps": 5,
+  "success": true,
+  "note": "status=done goal=0.85"
+ },
+ {
+  "task": "t3-section",
+  "contender": "jev-tern",
+  "run": 1,
+  "wall_s": 3.1,
+  "steps": 2,
+  "success": true,
+  "note": "status=done goal=0.87"
+ },
+ {
+  "task": "t3-section",
+  "contender": "jev-tern",
+  "run": 2,
+  "wall_s": 4,
+  "steps": 4,
+  "success": true,
+  "note": "status=done goal=0.9"
+ },
+ {
+  "task": "t3-section",
+  "contender": "jev-tern",
+  "run": 3,
+  "wall_s": 5.7,
+  "steps": 8,
+  "success": true,
+  "note": "status=done goal=0.91"
+ }
+]
