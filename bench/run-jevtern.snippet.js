@@ -24,7 +24,15 @@ for (const [id, spec] of Object.entries(TASKS)) {
   for (let run = 1; run <= 3; run++) {
     const t0 = Date.now();
     const r = await jt.run({ ...spec, maxSteps: 12, maxSeconds: 90, tabName: "jev-tern-bench", markdown: true });
-    const ok = r.status === "done";
+    // t2 is verified externally by URL, the same check browser-use gets:
+    // an article page, with the archive page and Main Page counted as misses.
+    let ok = r.status === "done";
+    if (id === "t2-portal") {
+      const url = r.finalUrl || "";
+      const tail = url.split("/wiki/").pop() || "";
+      ok = ok && url.includes("/wiki/") && !tail.includes(":")
+           && !url.includes("Today") && !url.includes("Main_Page");
+    }
     rows.push({ task: id, contender: "jev-tern", run, wall_s: +((Date.now() - t0) / 1000).toFixed(1),
                 steps: r.steps.length, success: ok, note: `status=${r.status} goal=${r.goal}` });
     writeFileSync(R, JSON.stringify(rows, null, 1));

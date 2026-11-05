@@ -189,33 +189,6 @@
   "note": "status=done goal=0.99"
  },
  {
-  "task": "t2-portal",
-  "contender": "jev-tern",
-  "run": 1,
-  "wall_s": 10.4,
-  "steps": 5,
-  "success": true,
-  "note": "status=done goal=0.91"
- },
- {
-  "task": "t2-portal",
-  "contender": "jev-tern",
-  "run": 2,
-  "wall_s": 9.6,
-  "steps": 5,
-  "success": true,
-  "note": "status=done goal=0.9"
- },
- {
-  "task": "t2-portal",
-  "contender": "jev-tern",
-  "run": 3,
-  "wall_s": 9.7,
-  "steps": 5,
-  "success": true,
-  "note": "status=done goal=0.85"
- },
- {
   "task": "t3-section",
   "contender": "jev-tern",
   "run": 1,
@@ -241,5 +214,32 @@
   "steps": 8,
   "success": true,
   "note": "status=done goal=0.91"
+ },
+ {
+  "task": "t2-portal",
+  "contender": "jev-tern",
+  "run": 1,
+  "wall_s": 10.1,
+  "steps": 0,
+  "success": true,
+  "note": "status=done goal=0.92 url-verified=true https://en.wikipedia.org/wiki/Nikolai_Kulikovsky"
+ },
+ {
+  "task": "t2-portal",
+  "contender": "jev-tern",
+  "run": 2,
+  "wall_s": 9.9,
+  "steps": 0,
+  "success": true,
+  "note": "status=done goal=0.88 url-verified=true https://en.wikipedia.org/wiki/Nikolai_Kulikovsky"
+ },
+ {
+  "task": "t2-portal",
+  "contender": "jev-tern",
+  "run": 3,
+  "wall_s": 25.2,
+  "steps": 0,
+  "success": false,
+  "note": "status=budget goal=null url-verified=false https://en.wikipedia.org/wiki/Wikipedia:Today's_featured_article"
  }
 ]

@@ -18,10 +18,12 @@ Plain-language tasks, finished in a browser tab you can watch the whole time.
 
 On the same three live tasks, same machine and API keys, three runs per task: jev-tern
 finished **10× faster** than [browser-use](https://github.com/browser-use/browser-use) on
-a one-hop fetch (2.9 s vs 28.9 s), **12×** on a portal search (9.7 s vs 115.5 s) and
-**33×** on a section jump (4.0 s vs 131.5 s) — at the same **9/9** task success, while a
-hand-written Playwright script set the speed floor at 1.4–1.6 s per task. Full method,
-raw results, and chart: **[BENCHMARK.md](BENCHMARK.md)**.
+a one-hop fetch (2.9 s vs 28.9 s), **12×** on a portal search (10.0 s vs 115.5 s) and
+**33×** on a section jump (4.0 s vs 131.5 s), scoring **8/9** with the one miss reported
+by the engine itself as `budget` and confirmed by URL; browser-use scored 9/9. A
+hand-written Playwright script set the speed floor at 1.4–1.6 s per task — it knows each
+page's DOM in advance, while jev-tern reads every page for the first time and takes
+plain language. Full method, raw results, and chart: **[BENCHMARK.md](BENCHMARK.md)**.
 
 ![Benchmark chart](docs/bench-chart.png)
 
