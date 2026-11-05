@@ -24,6 +24,8 @@ export async function createCdpBrowser(options = {}) {
   // Snapshot size scales with the viewport; 600x500 matches the engine's tuned budget.
   const viewport = options.viewport || { width: 600, height: 500 };
   const recordVideo = options.recordVideo || null;
+  const deviceScaleFactor = options.deviceScaleFactor || 1;
+  const launchArgs = options.launchArgs || [];
   let pwBrowser = options.browser || null;
   let ownsBrowser = false;
 
@@ -37,6 +39,7 @@ export async function createCdpBrowser(options = {}) {
           "--no-default-browser-check",
           "--no-first-run",
           "--disable-blink-features=AutomationControlled",
+          ...launchArgs,
         ],
       });
       ownsBrowser = true;
@@ -57,7 +60,7 @@ export async function createCdpBrowser(options = {}) {
 
     let context = contexts.get(name);
     if (!context) {
-      context = await pwBrowser.newContext({ viewport, ...(recordVideo ? { recordVideo } : {}) });
+      context = await pwBrowser.newContext({ viewport, deviceScaleFactor, ...(recordVideo ? { recordVideo } : {}) });
     }
 
     const page = await context.newPage();

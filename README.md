@@ -21,10 +21,10 @@ sections, click canvas UI — in a browser tab you can watch the whole time. Whe
 finishes, you get the status and the evidence behind it. When it fails, you get the
 reason it failed.
 
-One run, no cuts — search typed, suggestion picked, article opened (recorded by
-`demo.mjs`):
+Same task, same machine, same API keys, real time — jev-tern finishes while
+browser-use is still on its first page (recorded by `compose-race.sh`):
 
-[![demo video](docs/demo-poster.png)](https://github.com/cyriusweng/jev-tern/blob/main/docs/demo.mp4)
+[![race video](docs/race-poster.png)](https://github.com/cyriusweng/jev-tern/blob/main/docs/race.mp4)
 
 Three live Wikipedia tasks, three runs each, same machine and same API keys for both
 agents: jev-tern finished in 1.6, 3.4 and 1.8 seconds where

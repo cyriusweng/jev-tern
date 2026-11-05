@@ -1,3 +1,9 @@
 node_modules/
 demo-video/
 demo-frames/
+race-left/
+race-right/
+race-overlay/
+race-check/
+race-jev.log
+race-bu.log
