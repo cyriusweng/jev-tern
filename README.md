@@ -2,41 +2,47 @@
 
 <img src="docs/logo.svg" alt="jev-tern" width="420">
 
-**The browser agent born inside [OMP](https://github.com/cyriusweng) + Tern.**
+**A browser agent you can watch.**
 
-Plain-language tasks, finished in a browser tab you can watch the whole time.
+Type one sentence; it does the rest in a live browser tab.
 
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![GitHub Stars](https://img.shields.io/github/stars/cyriusweng/jev-tern.svg)](https://github.com/cyriusweng/jev-tern/stargazers)
 ![Single file](https://img.shields.io/badge/engine-single%20file-2563eb.svg)
 
-[Benchmark](BENCHMARK.md) · [Quickstart](#quickstart-omp--tern) · [Running it elsewhere](#running-it-elsewhere) · [Credits](#licence-and-credits)
+[Benchmark](BENCHMARK.md) · [Quickstart](#quickstart) · [Running it elsewhere](#running-it-elsewhere) · [Licence](#licence-and-credits)
 
 </div>
 
 ---
 
-On the same three live tasks, same machine and API keys, three runs per task: jev-tern
-finished **18× faster** than [browser-use](https://github.com/browser-use/browser-use) on
-a one-hop fetch (1.6 s vs 28.9 s), **34×** on a portal search (3.4 s vs 115.5 s) and
-**73×** on a section jump (1.8 s vs 131.5 s) — **9/9 task success** for both agents, with
-jev-tern's portal runs verified externally by URL. A hand-written Playwright script set
-the speed floor at 0.6–1.6 s per task — it knows each page's DOM in advance, while
-jev-tern reads every page for the first time and takes plain language. Full method, raw
-results, and chart: **[BENCHMARK.md](BENCHMARK.md)**.
+jev-tern finishes plain-language web tasks — click, type, select, close popups, jump to
+sections, click canvas UI — in a browser tab you can watch the whole time. When a task
+finishes, you get the status and the evidence behind it. When it fails, you get the
+reason it failed.
+
+Three live Wikipedia tasks, three runs each, same machine and same API keys for both
+agents: jev-tern finished in 1.6, 3.4 and 1.8 seconds where
+[browser-use](https://github.com/browser-use/browser-use) took 28.9, 115.5 and 131.5 —
+between 18 and 73 times — with both agents at 9/9 success. A hand-written Playwright
+script (0.6–1.6 s) shows what knowing the page in advance buys. Method, raw data and
+chart: **[BENCHMARK.md](BENCHMARK.md)**.
 
 ![Benchmark chart](docs/bench-chart.png)
 
-## Born inside OMP + Tern
+## How it works
 
-jev-tern was designed for the OMP + Tern stack, and that is where it lives: it drives
-Tern's picture-in-picture WebKit tab (the one you already watch), reads its two keys via
-`omp token`, and ships as one ES module you import from an eval. One Jev request judges
-each step (250–400 ms); GLM-5.3-Flash types field values; everything mechanical — page
-readiness, scroll math, exact task-text matches, image sizing — runs in code, so the judge
-only ever sees clean facts.
+Each step makes exactly one request to a Jev judge: which operation, which target, is the
+goal met. Everything a computer can measure — page readiness, scroll positions, section
+geometry, exact task-text matches, image sizing — runs in code, and the engine hands the
+measured facts to the judge as `code_verified`. Field values come from any
+OpenAI-compatible chat endpoint.
 
-## Quickstart (OMP + Tern)
+The engine was built for the OMP + Tern desktop setup, where it drives the
+picture-in-picture WebKit tab. It talks to the browser through six calls, so it runs on
+any stack that provides them.
+
+## Quickstart
 
 ```js
 const jt = await import("/path/to/jevTern.mjs");
@@ -45,21 +51,20 @@ const r = await jt.run({
   startUrl: "https://en.wikipedia.org/wiki/Main_Page",
   maxSteps: 12,        // default 14
   maxSeconds: 90,      // default 100
-  tabName: "jev-tern", // the reused Tern PiP tab
+  tabName: "jev-tern", // the reused PiP tab
   allowedDomains: ["en.wikipedia.org"], // optional
   markdown: true,      // optional: final page main content back as markdown
 });
 ```
 
-The result carries `status` (`done | blocked | stuck | budget | error`), `goal`
-(0–1 probability every requirement is met), per-step evidence in `steps`, and `markdown`
-when asked for. Keep two runs on one tab out of `Promise.all`; calls on one tab are
-sequential.
+The result carries `status` (`done | blocked | stuck | budget | error`), `goal` (0–1
+probability every requirement is met), per-step evidence in `steps`, and `markdown` when
+asked for. Calls on one tab are sequential; keep two runs on the same tab out of
+`Promise.all`.
 
 ## Running it elsewhere
 
-The engine touches the browser only through a small bridge surface. Implement these six
-calls on your stack and the rest of the file runs as-is:
+The browser bridge is six calls. Implement these and the rest of the file runs as-is:
 
 | Bridge call | Used for |
 |---|---|
@@ -70,15 +75,20 @@ calls on your stack and the rest of the file runs as-is:
 | `tab.allowedDomains([…])` | optional domain guard |
 | `tab.run(async ({page}) => …)` | full page access, used only for screenshots |
 
-You also need Node ≥ 18 and two API keys — a TypeSafe Jev key and a bigmodel key — read at
-runtime from `omp token` (override with `OMP_BIN` if your binary lives elsewhere). Point
-`OMP` at your token source or adapt `token()`; everything else is bridge-agnostic.
+You also need Node ≥ 18 and two keys, set through the environment:
+
+- `TYPESAFE_KEY` — the Jev judge
+- `TYPING_BASE_URL`, `TYPING_MODEL`, `TYPING_KEY` — any OpenAI-compatible chat endpoint
+  that fills form fields
+
+A local credential store works as a fallback when the environment variables are unset
+(point `OMP_BIN` at it).
 
 ## What it handles
 
-- Click, type, select, scroll, and straight jumps to section headings; a task naming a
-  section in quotes jumps directly when the DOM holds exactly one such heading, then
-  hands the measured geometry to the judge as code-verified ground truth.
+- Click, type, select, scroll, and jumps to section headings; a task naming a section in
+  quotes jumps directly when the DOM holds exactly one such heading, then hands the
+  measured geometry to the judge as code-verified fact.
 - Popups: shadow DOM is pierced (consent banners become ordinary buttons), overlays are
   detected mechanically, dismissing them is a normal click.
 - Canvas pages: a page with almost nothing in the DOM gets a viewport screenshot, a Box
@@ -92,19 +102,11 @@ runtime from `omp token` (override with `OMP_BIN` if your binary lives elsewhere
   navigated page.
 - Recovery: a GO_BACK control appears whenever a previous distinct page exists, so a
   wrong navigation costs one step.
-- Confidence floors: a DONE needs the operation choice, the goal Noul at 0.8+, and the
-  judge's own confidence at 0.6+; an action picked below 0.55 attaches a viewport
-  screenshot to the next judgment.
+- Confidence floors: a DONE needs the operation choice, the goal at 0.8+, and the judge's
+  own confidence at 0.6+; an action picked below 0.55 attaches a viewport screenshot to
+  the next judgment.
 - Every task starts from a fresh top-of-page viewport, and scroll directions that cannot
   move are withheld from the judge.
-- Honest outcomes: `stuck` and `blocked` come back as they are, with the evidence that
-  produced them.
-
-## Requires
-
-An OMP-style environment (a `browser` global with the tab bridge above), `omp token
-typesafe` and `omp token zai` for the two keys, and `jev-1.14.0` or newer for Box/image
-questions.
 
 ## Limits
 
@@ -112,10 +114,10 @@ questions.
 - Logged-out by design: login walls end as `blocked` with the wall described.
 - Image questions follow TypeSafe's preview-grade pipeline and may shift between releases.
 - Each screenshot costs about 4k input tokens; the engine attaches one only when pixels
-  add signal: DOM-thin pages, overlays, or two actions in a row that changed nothing.
+  add signal: DOM-thin pages, overlays, two actions in a row that changed nothing, or a
+  low-confidence action.
 
 ## Licence and credits
 
 MIT. The snapshot and rules text are ports from the MIT-licensed browser-use /
-jev-ultrafast projects. Jev and the Box question type are from TypeSafe AI (early access).
-Field values are typed by GLM-5.3-Flash through bigmodel's OpenAI-compatible endpoint.
+jev-ultrafast projects. Judgments use Jev from TypeSafe AI.
