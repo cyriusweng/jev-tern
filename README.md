@@ -21,17 +21,19 @@ sections, click canvas UI — in a browser tab you can watch the whole time. Whe
 finishes, you get the status and the evidence behind it. When it fails, you get the
 reason it failed.
 
-Same task, same machine, same API keys, real time — jev-tern finishes while
-browser-use is still on its first page (recorded by `compose-race.sh`):
+**Zürich → London on Google Flights in 24.6 seconds**, one sentence in, every wait
+included, the result independently verified after the run (autoplaying preview; the
+full 1×-speed video with the live checklist is [docs/flights.mp4](docs/flights.mp4)):
 
-[![race video](docs/race-poster.png)](https://github.com/cyriusweng/jev-tern/blob/main/docs/race.mp4)
+<a href="docs/flights.mp4"><img src="docs/flights.gif" alt="A real Google Flights search at 1× speed: one goal, typed city names, a typed date, live checklist" width="880"></a>
 
 Three live Wikipedia tasks, three runs each, same machine and same API keys for both
 agents: jev-tern finished in 1.6, 3.4 and 1.8 seconds where
 [browser-use](https://github.com/browser-use/browser-use) took 28.9, 115.5 and 131.5 —
 between 18 and 73 times — with both agents at 9/9 success. A hand-written Playwright
 script (0.6–1.6 s) shows what knowing the page in advance buys. Method, raw data and
-chart: **[BENCHMARK.md](BENCHMARK.md)**.
+chart: **[BENCHMARK.md](BENCHMARK.md)**. A recorded race on one task — jev-tern side
+by side with browser-use, real time — is in [docs/race.mp4](docs/race.mp4).
 
 ![Benchmark chart](docs/bench-chart.png)
 

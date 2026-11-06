@@ -115,3 +115,12 @@ Set `BU_BROWSER_PATH` if browser-use cannot find your Chromium; `BU_MODEL` and
    choice DONE, the goal Noul at 0.8+, and the judge's own confidence at 0.6+; an action
    chosen below 0.55 confidence attaches a viewport screenshot to the next judgment as
    extra evidence.
+
+## Note after these measurements
+
+The runs above used click-settle that watched only the tab title, which waits out its
+full window on single-page apps. A later change (settle polling the page signature and
+returning on two stable reads) only shortens waits; the recorded numbers predate it and
+are therefore conservative for jev-tern. The Rosetta Stone search flow that took
+13–16 s before the change finishes in about 10 s after it, and the Google Flights run
+in the README went from ~50 s to 24.6 s.

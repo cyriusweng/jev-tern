@@ -442,19 +442,21 @@ async function pageSig(tab, withScroll=false) {
 async function settle(tab, before, mode, withScroll=false) {
   const t0=Date.now();
   if (mode==="click") {
+    // The blind window lets a click-started navigation commit; evaluating into an
+    // in-flight navigation throws here (or cancels it on WKWebView), so a failed
+    // read just means "still moving" and the poll continues.
     await new Promise(r=>setTimeout(r,700));
-    const titleBefore=before.split("|")[1];
+    let prev=null, stable=0;
     while (Date.now()-t0<3500) {
-      let titleNow; try { titleNow=await tab.title(); } catch {}
-      if (titleNow && titleNow!==titleBefore) {
-        await new Promise(r=>setTimeout(r,250));
-        const sig=await pageSig(tab);
-        return {changed:sig!==before,waited_ms:Date.now()-t0};
+      let sig; try { sig=await pageSig(tab, withScroll); } catch { sig=null; }
+      if (sig!==null) {
+        if (sig===prev && ++stable>=2) return {changed:sig!==before,waited_ms:Date.now()-t0};
+        if (sig!==prev) stable=0;
+        prev=sig;
       }
-      await new Promise(r=>setTimeout(r,150));
+      await new Promise(r=>setTimeout(r,200));
     }
-    const sig=await pageSig(tab);
-    return {changed:sig!==before,waited_ms:Date.now()-t0};
+    return {changed:prev!==null&&prev!==before,waited_ms:Date.now()-t0};
   }
   while (Date.now()-t0<1200) {
     await new Promise(r=>setTimeout(r,150));
