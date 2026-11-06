@@ -36,7 +36,10 @@ agents: jev-tern finished in 1.6, 3.4 and 1.8 seconds where
 between 18 and 73 times — with both agents at 9/9 success. A hand-written Playwright
 script (0.6–1.6 s) shows what knowing the page in advance buys. Method, raw data and
 chart: **[BENCHMARK.md](BENCHMARK.md)**. A recorded race on one task — jev-tern side
-by side with browser-use, real time — is in [docs/race.mp4](docs/race.mp4).
+by side with browser-use, real time — full-quality MP4 in
+[docs/race.mp4](docs/race.mp4):
+
+![jev-tern and browser-use racing on the same task in real time](docs/race.gif)
 
 ![Benchmark chart](docs/bench-chart.png)
 
