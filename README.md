@@ -24,10 +24,11 @@ reason it failed.
 **Zürich → London on Google Flights in 24.6 seconds**, one sentence in, every wait
 included, the result independently verified after the run. browser-use ran the same
 task on the same machine for **11 minutes 6 seconds** and the flight options never
-appeared — its final answer claimed they were visible (autoplaying preview; the full
-1×-speed video with the live checklist is [docs/flights.mp4](docs/flights.mp4)):
+appeared — its final answer claimed they were visible. Real time, no cuts:
 
-<a href="docs/flights.mp4"><img src="docs/flights.gif" alt="A real Google Flights search at 1× speed: one goal, typed city names, a typed date, live checklist" width="880"></a>
+![A real Google Flights search at 1× speed: one goal, typed city names, a typed date, a live checklist](docs/flights.gif)
+
+The full-quality MP4 is [docs/flights.mp4](docs/flights.mp4).
 
 Three live Wikipedia tasks, three runs each, same machine and same API keys for both
 agents: jev-tern finished in 1.6, 3.4 and 1.8 seconds where
