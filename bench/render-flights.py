@@ -25,6 +25,8 @@ f_sub = ImageFont.truetype(SF, 30)
 f_brand = ImageFont.truetype(MENLO, 30)
 f_badge = ImageFont.truetype(MENLO, 26)
 f_clock = ImageFont.truetype(MENLO, 110)
+cmp_path = d / "compare.json"
+compare = json.loads(cmp_path.read_text()) if cmp_path.exists() else None
 f_label = ImageFont.truetype(MENLO, 24)
 f_item = ImageFont.truetype(MENLO, 34)
 f_stat = ImageFont.truetype(MENLO, 46)
@@ -36,7 +38,7 @@ GREY = (156, 163, 175)
 WHITE = (243, 244, 246)
 DIM = (107, 114, 128)
 
-BX, BY, BW, BH = 56, 152, 1008, 840          # browser window (1200x1000 scaled 0.84)
+BX, BY, BW, BH = 56, 208, 940, 784          # browser window (1200x1000 scaled 0.784)
 PX = BX + BW + 40                             # HUD panel
 PW = W - PX - 56
 
@@ -76,8 +78,14 @@ for n in range(N):
     rounded(dr, [W - 60 - bw - 36, 34, W - 60, 84], 14, (24, 28, 34))
     dr.text((W - 60 - bw - 18, 44), "REAL WEB · 1× SPEED", font=f_badge, fill=GREY)
     head = f"Zürich → London. In {trace['elapsed_s']:.1f} seconds."
-    dr.text((60, 62), head, font=f_head, fill=WHITE)
-    dr.text((62, 154 - 12), "One sentence in · one judged step at a time", font=f_sub, fill=GREY)
+    dr.text((60, 54), head, font=f_head, fill=WHITE)
+    if compare:
+        bu = compare["browser_use_s"]
+        line = (f"browser-use, same task, same machine, same keys: "
+                f"{int(bu // 60)} min {bu % 60:.0f} s — {bu / trace['elapsed_s']:.1f}× slower")
+        dr.text((62, 136), line, font=f_sub, fill=GREEN)
+    else:
+        dr.text((62, 136), "One sentence in · one judged step at a time", font=f_sub, fill=GREY)
 
     # browser window
     rounded(dr, [BX - 10, BY - 10, BX + BW + 10, BY + BH + 10], 18, (18, 21, 26), (38, 44, 52), 2)

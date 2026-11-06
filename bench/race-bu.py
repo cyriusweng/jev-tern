@@ -2,15 +2,18 @@
 # The recorder attaches over CDP and screencasts whatever page the agent opens,
 # saving JPEG frames with unix timestamps to race-right/manifest.txt.
 # Usage: bench/.venv/bin/python bench/race-bu.py
-import asyncio, base64, glob, json, os, subprocess, time
+import asyncio, base64, glob, json, os, subprocess, sys, time
 from pathlib import Path
 
-OUT = Path(__file__).parent.parent / "race-right"
+OUT = Path(__file__).parent.parent / (sys.argv[2] if len(sys.argv) > 2 else "race-right")
 FRAMES = OUT / "frames"
 FRAMES.mkdir(parents=True, exist_ok=True)
 
-TASK = ("Search Wikipedia for the Rosetta Stone, open the article, "
-        "and jump to the \"Rediscovery\" section.")
+TASK = sys.argv[1] if len(sys.argv) > 1 else (
+    "Search Wikipedia for the Rosetta Stone, open the article, "
+    "and jump to the \"Rediscovery\" section.")
+MAX_STEPS = int(sys.argv[3]) if len(sys.argv) > 3 else 25
+
 
 def zai_key():
     env = os.environ.get("BU_KEY")
