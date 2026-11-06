@@ -81,8 +81,12 @@ for n in range(N):
     dr.text((60, 54), head, font=f_head, fill=WHITE)
     if compare:
         bu = compare["browser_use_s"]
-        line = (f"browser-use, same task, same machine, same keys: "
-                f"{int(bu // 60)} min {bu % 60:.0f} s — {bu / trace['elapsed_s']:.1f}× slower")
+        if compare.get("outcome") == "no-results":
+            line = (f"browser-use, same task, same keys: {int(bu // 60)} min {bu % 60:.0f} s, "
+                    f"results never appeared — its final answer claimed they were visible")
+        else:
+            line = (f"browser-use, same task, same machine, same keys: "
+                    f"{int(bu // 60)} min {bu % 60:.0f} s — {bu / trace['elapsed_s']:.1f}× slower")
         dr.text((62, 136), line, font=f_sub, fill=GREEN)
     else:
         dr.text((62, 136), "One sentence in · one judged step at a time", font=f_sub, fill=GREY)

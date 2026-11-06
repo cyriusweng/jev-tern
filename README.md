@@ -22,10 +22,10 @@ finishes, you get the status and the evidence behind it. When it fails, you get 
 reason it failed.
 
 **Zürich → London on Google Flights in 24.6 seconds**, one sentence in, every wait
-included, the result independently verified after the run. browser-use needed
-**11 min 6 s** for the same task on the same machine — 27× slower (autoplaying
-preview; the full 1×-speed video with the live checklist is
-[docs/flights.mp4](docs/flights.mp4)):
+included, the result independently verified after the run. browser-use ran the same
+task on the same machine for **11 minutes 6 seconds** and the flight options never
+appeared — its final answer claimed they were visible (autoplaying preview; the full
+1×-speed video with the live checklist is [docs/flights.mp4](docs/flights.mp4)):
 
 <a href="docs/flights.mp4"><img src="docs/flights.gif" alt="A real Google Flights search at 1× speed: one goal, typed city names, a typed date, live checklist" width="880"></a>
 
