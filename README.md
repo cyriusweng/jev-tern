@@ -110,6 +110,13 @@ same six calls.
   measured geometry to the judge as code-verified fact.
 - Popups: shadow DOM is pierced (consent banners become ordinary buttons), overlays are
   detected mechanically, dismissing them is a normal click.
+- Login and logout: pass `credentials: { username, keychain: { service, account } }` and
+  the password is read from the macOS keychain at runtime (`security
+  find-generic-password`), never entering the conversation or the judge. Password
+  fields join the snapshot only in login mode, and the value stays masked to `"***"`
+  in steps, history, errors and the fill echo. Literal `password` values serve
+  throwaway test accounts. `logout: true` clears storage and cookies before the task;
+  HttpOnly cookies still need the site's own logout button, a normal click task.
 - Canvas pages: a page with almost nothing in the DOM gets a viewport screenshot, a Box
   question finds the right control, and the returned coordinates are clicked natively —
   measured 3 px off a drawn circle.

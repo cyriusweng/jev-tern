@@ -57,7 +57,10 @@ function token(provider, envName) {
 }
 
 // ---- Snapshot: port of jev-ultrafast snapshot.js, adapted for tab.evaluate ----
-const SNAPSHOT_JS = String.raw`(() => {
+// PWD=true (login mode) admits password fields into the snapshot; their values are
+// always masked to "" so a typed password can never reach the judge or any log.
+const SNAPSHOT_JS = includePwd => String.raw`(() => {
+  const PWD = ${includePwd ? "true" : "false"};
   if (!document.body) return null;
   const cache = window.__jevTern ||= {ids:new WeakMap(), nodes:new Map(), next:1};
   const identity = e => {
@@ -65,7 +68,7 @@ const SNAPSHOT_JS = String.raw`(() => {
     const id=cache.ids.get(e); cache.nodes.set(id,e); return id;
   };
   for (const [id,e] of cache.nodes) if (!e.isConnected) cache.nodes.delete(id);
-  const safe = e => !['password','file','hidden'].includes(e.type);
+  const safe = e => !['file','hidden'].includes(e.type) && (PWD || e.type!=='password');
   const visible = e => !e.closest('[aria-hidden="true"],[inert]') &&
     e.checkVisibility({checkOpacity:true,checkVisibilityCSS:true});
   const name = (e,seen=new Set()) => {
@@ -115,6 +118,7 @@ const SNAPSHOT_JS = String.raw`(() => {
       if (['button','submit','reset','image'].includes(e.type)) return 'button';
       if (e.type==='search') return 'searchbox';
       if (e.type==='number') return 'spinbutton';
+      if (e.type==='password') return PWD ? 'textbox' : null;
       if (['text','email','url','tel'].includes(e.type)) return 'textbox';
     }
     return null;
@@ -138,6 +142,7 @@ const SNAPSHOT_JS = String.raw`(() => {
     if (rname==='gridcell' && e.querySelector('button,[role="button"]')) continue;
     const base={node:identity(e),role:rname,label:name(e)||rname,
       rect:{x:r.x,y:r.y,w:r.width,h:r.height}};
+    if (e.type==='password') base.pwd=true;
     for (const key of ['checked','selected','expanded']) {
       const value=e.getAttribute('aria-'+key);
       if (value!==null) base[key]=value;
@@ -151,7 +156,7 @@ const SNAPSHOT_JS = String.raw`(() => {
       const editable=!e.readOnly && e.getAttribute('aria-readonly')!=='true' &&
         (['textbox','searchbox','spinbutton'].includes(rname) ||
           (rname==='combobox' && ['INPUT','TEXTAREA'].includes(e.tagName)));
-      const value='value' in e ? String(e.value) :
+      const value=e.type==='password' ? '' : 'value' in e ? String(e.value) :
         e.isContentEditable || rname==='combobox' ? e.innerText.trim() : '';
       actions.push({...base,kind:editable?'fill':'click',value});
       if (editable) actions.push({...base,kind:'click',value,label:'Open '+base.label});
@@ -417,7 +422,7 @@ async function execute(tab, action) {
       el.dispatchEvent(new Event("change",{bubbles:true}));
       return el.value;
     })()`);
-    return {did:"typed",value:filled};
+    return {did:"typed", value: action.pwd ? "***" : filled};
   }
   try { await tab.clickAt(fresh.x,fresh.y); return {did:"native-click"}; }
   catch {
@@ -490,10 +495,38 @@ async function captureShot(tab) {
 }
 // ---- Main loop ----
 export async function run(opts) {
-  const {task,startUrl,maxSteps=14,maxSeconds=100,tabName="jev-tern",allowedDomains=null}=opts;
+  const {task,startUrl,maxSteps=14,maxSeconds=100,tabName="jev-tern",allowedDomains=null,credentials=null,logout=false}=opts;
   const typesafeKey=token("typesafe","TYPESAFE_KEY"), zaiKey=token("zai","TYPING_KEY");
   const tab=await browser.open({name:tabName,url:startUrl,app:{relay:false},wait_until:"domcontentloaded"});
   if (allowedDomains) { try { await tab.allowedDomains(allowedDomains); } catch {} }
+  // Credentials (login mode). Keychain lookup keeps the secret out of the model
+  // transcript and the judge entirely; literals serve throwaway test accounts.
+  // Passwords never appear in steps, history or error messages.
+  let creds=null;
+  if (credentials) {
+    let password=credentials.password ?? null;
+    if (credentials.keychain) {
+      const {service,account}=credentials.keychain;
+      const kc=spawnSync("security",["find-generic-password","-w","-s",service,"-a",account],{encoding:"utf8"});
+      if (kc.status!==0 || !kc.stdout.trim())
+        throw new Error(`keychain lookup failed for "${service}" (security exit ${kc.status}); nothing typed`);
+      password=kc.stdout.trim();
+    }
+    if (credentials.username || password) creds={username:credentials.username ?? null,password};
+  }
+  if (logout) {
+    // Best-effort web-storage logout: clears what the page can reach. HttpOnly
+    // cookies need the site's own logout button (run that as a normal task).
+    try {
+      await tab.evaluate(`(() => {
+        try { localStorage.clear(); sessionStorage.clear(); } catch {}
+        document.cookie.split(";").forEach(c => { const k=c.split("=")[0].trim();
+          document.cookie = k+"=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/"; });
+        location.replace(${JSON.stringify(startUrl||"about:blank")});
+        return "cleared"; })()`);
+      await new Promise(r=>setTimeout(r,900));
+    } catch {}
+  }
   // First-paint readiness: stay silent while the initial navigation commits (evaluating
   // mid-navigation cancels it on this WKWebView bridge), then poll for a complete document.
   await new Promise(r=>setTimeout(r,500));
@@ -520,7 +553,7 @@ export async function run(opts) {
   for (let step=1;step<=maxSteps;step++) {
     if (Date.now()-t0>maxSeconds*1000) break;
     const ts=Date.now();
-    const snap=await tab.evaluate(SNAPSHOT_JS);
+    const snap=await tab.evaluate(SNAPSHOT_JS(!!creds));
     if (!snap) { result.status="error"; result.error="empty snapshot"; break; }
     trail.push({title:snap.title,url:snap.url,head:snap.text.slice(0,600)});
     if (trail.length>3) trail.splice(0,trail.length-3);
@@ -701,14 +734,30 @@ export async function run(opts) {
       entry.target=valid.choice; entry.targetLabel=action.label.slice(0,80); entry.targetConf=valid.confidence;
 
       if (operation==="TYPE_TEXT") {
-        try {
-          const typed=await typeText(zaiKey,task,action,snap,history);
-          action={...action,text:typed.text};
-          entry.typed=typed.text.slice(0,60);
-        } catch (e) {
-          entry.act="typing-failed"; entry.error=String(e.message||e).slice(0,120);
-          steps.push(entry); history.push({action:"type_failed",page_changed:false});
-          continue;
+        // Credential fields are data, not judgment: route them deterministically
+        // from `credentials` and mask the password everywhere it could surface.
+        const looksUser=creds?.username && !action.pwd &&
+          /user|email|account|login|账号|用户名|邮箱|电邮/i.test(action.label||"");
+        if (action.pwd || looksUser) {
+          const val=action.pwd ? creds?.password : creds?.username;
+          if (!val) {
+            entry.act="missing-credential";
+            entry.error=action.pwd ? "no password available for this field" : "no username available for this field";
+            steps.push(entry); history.push({action:"credential_missing",page_changed:false});
+            continue;
+          }
+          action={...action,text:val};
+          entry.typed=action.pwd ? "***" : val.slice(0,30);
+        } else {
+          try {
+            const typed=await typeText(zaiKey,task,action,snap,history);
+            action={...action,text:typed.text};
+            entry.typed=typed.text.slice(0,60);
+          } catch (e) {
+            entry.act="typing-failed"; entry.error=String(e.message||e).slice(0,120);
+            steps.push(entry); history.push({action:"type_failed",page_changed:false});
+            continue;
+          }
         }
       }
     }
@@ -721,7 +770,9 @@ export async function run(opts) {
 
     try { entry.exec=await execute(tab,action); }
     catch (e) {
-      entry.act="action-failed"; entry.error=String(e.message||e).slice(0,120);
+      entry.act="action-failed";
+      // A bridge error could echo the script, which embeds the value: fixed message.
+      entry.error=action.pwd ? "password fill failed" : String(e.message||e).slice(0,120);
       steps.push(entry); history.push({action:`${operation.toLowerCase()}_failed`,page_changed:false});
       continue;
     }
@@ -735,8 +786,8 @@ export async function run(opts) {
     entry.dbgSnapUrl=snap.url; entry.dbgTitle=await tab.title();
     try { entry.dbgHref=await tab.evaluate(`location.href`); } catch { entry.dbgHref="ERR"; }
     steps.push(entry);
-    history.push({action:`${operation.toLowerCase()} ${action.id}${action.label?` "${action.label.slice(0,50)}"`:""}${action.text?` type "${action.text.slice(0,40)}"`:""}`,
-      page_changed:settleRes.changed,text:action.text?.slice(0,40)});
+    history.push({action:`${operation.toLowerCase()} ${action.id}${action.label?` "${action.label.slice(0,50)}"`:""}${action.text?` type "${action.pwd?"***":action.text.slice(0,40)}"`:""}`,
+      page_changed:settleRes.changed,text:action.pwd?"***":action.text?.slice(0,40)});
   }
 
   result.elapsed_s=+((Date.now()-t0)/1000).toFixed(1);
